@@ -30,17 +30,17 @@ from dataset.dataset_indexing import set_dataset_path
 '''
 def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=None):
 
-    config = Config()
+    config = Config() # 初始化config配置
     if config_path is not None:
         config.load(config_path)
-        set_dataset_path(config, dataset_name, sequence_name)
+        set_dataset_path(config, dataset_name, sequence_name) # 
         if seed is not None:
             config.seed = seed
         argv = ['pin_slam.py', config_path, dataset_name, sequence_name, str(seed)]
         run_path = setup_experiment(config, argv)
     else:
         if len(sys.argv) > 1:
-            config.load(sys.argv[1])
+            config.load(sys.argv[1]) # 在这里给load进去，然后argv[0]是py文件路径，argv[1]是yaml文件路径
         else:
             sys.exit("Please provide the path to the config file.\nTry: \
                     python3 pin_slam.py path_to_config.yaml [dataset_name] [sequence_name] [random_seed]")       
@@ -49,7 +49,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
             set_dataset_path(config, sys.argv[2], sys.argv[3])
         if len(sys.argv) > 4: # random seed [optional]
             config.seed = int(sys.argv[4])
-        run_path = setup_experiment(config, sys.argv)
+        run_path = setup_experiment(config, sys.argv) # setup实验配置，用处小
         print("[bold green]PIN-SLAM starts[/bold green]","📍" )
 
     # initialize the mlp decoder
