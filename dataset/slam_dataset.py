@@ -48,7 +48,7 @@ class SLAMDataset(Dataset):
             self.gt_pose_provided = False
 
         self.odom_poses = None
-        if config.track_on:
+        if config.track_on["track_on"]:
             self.odom_poses = []
             
         self.pgo_poses = None
@@ -79,13 +79,13 @@ class SLAMDataset(Dataset):
                 if config.closed_pose_path is not None and config.use_gt_loop:
                     poses_closed_uncalib = read_kitti_format_poses(config.closed_pose_path)
             elif config.pose_path.endswith('csv'):
-                poses_uncalib = read_tum_format_poses_csv(config.pose_path)
+                poses_uncalib = read_tum_format_poses_csv(config.pose_path) # 做实验用的gt位姿在这里读入
             else: 
                 sys.exit("Wrong pose file format. Please use either *.txt or *.csv")
 
             # apply calibration
             # actually from camera frame to LiDAR frame, lidar pose in world frame 
-            self.poses_w = apply_kitti_format_calib(poses_uncalib, inv(self.calib['Tr'])) 
+            self.poses_w = apply_kitti_format_calib(poses_uncalib, inv(self.calib['Tr'])) # world坐标系下的gt位姿
             if config.closed_pose_path is not None and config.use_gt_loop:
                 self.poses_w_closed = apply_kitti_format_calib(poses_closed_uncalib, inv(self.calib['Tr'])) 
 
@@ -103,7 +103,7 @@ class SLAMDataset(Dataset):
             for frame_id in range(self.total_pc_count):
                 if not begin_flag:  # the first frame used
                     begin_flag = True
-                    if config.first_frame_ref: # use the first frame as the reference (identity)
+                    if config.first_frame_ref: # use the first frame as the reference (identity) 否则就用单位阵当作ref
                         begin_pose_inv = inv(self.poses_w[frame_id])  # T_rw      
                 self.poses_ref[frame_id] = begin_pose_inv @ self.poses_w[frame_id]
         # or we directly use the world frame as reference
@@ -196,8 +196,8 @@ class SLAMDataset(Dataset):
         
         # load gt pose if available
         if self.gt_pose_provided:
-            self.cur_pose_ref = self.poses_ref[frame_id]
-            self.gt_poses.append(self.cur_pose_ref)
+            self.cur_pose_ref = self.poses_ref[frame_id] # 当前帧的gt
+            self.gt_poses.append(self.cur_pose_ref) # 当前的gt推到所有的gt_poses这个里面去
         else: # or initialize with identity
             self.cur_pose_ref = np.eye(4)
         self.cur_pose_torch = torch.tensor(self.cur_pose_ref, device=self.device, dtype=self.dtype)
@@ -263,7 +263,7 @@ class SLAMDataset(Dataset):
         # poses related
         cur_pose_init_guess = self.cur_pose_ref
         if self.processed_frame == 0: # initialize the first frame, no tracking yet
-            if self.config.track_on:
+            if self.config.track_on["track_on"]:
                 self.odom_poses.append(self.cur_pose_ref)
             if self.config.pgo_on:
                 self.pgo_poses.append(self.cur_pose_ref)
@@ -280,7 +280,7 @@ class SLAMDataset(Dataset):
             else: # static initial guess
                 cur_pose_init_guess = self.last_pose_ref
 
-            if not self.config.track_on and self.gt_pose_provided:
+            if not self.config.track_on["track_on"] and self.gt_pose_provided:
                 cur_pose_init_guess = self.poses_ref[frame_id]
             
             # pose initial guess tensor
@@ -306,7 +306,7 @@ class SLAMDataset(Dataset):
         original_count = self.cur_point_cloud_torch.shape[0]
         if original_count < 10: # deal with missing data (invalid frame)
             print("[bold red]Not enough input point cloud, skip this frame[/bold red]") 
-            if self.config.track_on:
+            if self.config.track_on["track_on"]:
                 self.odom_poses.append(cur_pose_init_guess)
             if self.config.pgo_on:
                 self.pgo_poses.append(cur_pose_init_guess)
@@ -479,7 +479,7 @@ class SLAMDataset(Dataset):
     def write_results_log(self, cur_frame: int, run_path: str):
         log_folder = 'log'
         frame_str = str(cur_frame)
-        if self.config.track_on:
+        if self.config.track_on["track_on"]:
             write_traj_as_o3d(self.odom_poses, os.path.join(run_path, log_folder, frame_str+"_odom_poses.ply"))
         if self.config.pgo_on:
             write_traj_as_o3d(self.pgo_poses, os.path.join(run_path, log_folder, frame_str+"_slam_poses.ply"))
@@ -595,7 +595,7 @@ class SLAMDataset(Dataset):
                 self.cur_point_cloud_torch = intrinsic_correct(self.cur_point_cloud_torch, self.config.correction_deg)
 
             if self.config.deskew and use_frame_id < self.processed_frame-1:
-                if self.config.track_on:
+                if self.config.track_on["track_on"]:
                     tran_in_frame = np.linalg.inv(self.odom_poses[use_frame_id+1]) @ self.odom_poses[use_frame_id]
                 elif self.gt_pose_provided:
                     tran_in_frame = np.linalg.inv(self.gt_poses[use_frame_id+1]) @ self.gt_poses[use_frame_id]
@@ -611,7 +611,7 @@ class SLAMDataset(Dataset):
                                                        
             if self.config.pgo_on:
                 cur_pose_torch = torch.tensor(self.pgo_poses[use_frame_id], device=self.device, dtype=torch.float64)
-            elif self.config.track_on:
+            elif self.config.track_on["track_on"]:
                 cur_pose_torch = torch.tensor(self.odom_poses[use_frame_id], device=self.device, dtype=torch.float64)
             elif self.gt_pose_provided:
                 cur_pose_torch = torch.tensor(self.gt_poses[use_frame_id], device=self.device, dtype=torch.float64)
