@@ -191,7 +191,7 @@ class Config:
         self.ba_bs: int = 16384 # batch size for ba optimization
 
         # tracking (odometry estimation)
-        self.track_on: bool = True
+        self.track_on: bool = False
         self.photometric_loss_on: bool = False # add the color (or intensity) [photometric loss] to the tracking loss
         self.photometric_loss_weight: float = 0.01 # weight for the photometric loss in tracking
         self.consist_wieght_on: bool = True # weight for color (intensity) consistency for the measured and queried value

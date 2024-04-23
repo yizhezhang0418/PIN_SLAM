@@ -106,7 +106,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
         # I. Load data and preprocessing
         T0 = get_time()
 
-        dataset.read_frame(frame_id)
+        dataset.read_frame(frame_id) # 读取点云，并且将其和当前帧位姿一起变成torch
 
         T1 = get_time()
         
@@ -119,7 +119,8 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
         
         # II. Odometry
         if used_frame_id > 0: 
-            if config.track_on:
+            # aa = config.track_on["track_on"]
+            if config.track_on["track_on"]:
                 tracking_result = tracker.tracking(dataset.cur_source_points, dataset.cur_pose_guess_torch, 
                                                    dataset.cur_source_colors, dataset.cur_source_normals,
                                                    vis_result=config.o3d_vis_on and not config.o3d_vis_raw)
@@ -134,7 +135,9 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
                 dataset.update_odom_pose(cur_pose_torch) # update dataset.cur_pose_torch
             else: # incremental mapping with gt pose
                 if dataset.gt_pose_provided:
-                    dataset.update_odom_pose(dataset.cur_pose_guess_torch) 
+                    dataset.update_odom_pose(dataset.cur_pose_guess_torch)
+                    aa = dataset.cur_pose_guess_torch
+                    print(f"这是第{frame_id}帧!")
                 else:
                     sys.exit("You are using the mapping mode, but no pose is provided.")
 
@@ -259,7 +262,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
             freeze_decoders(geo_mlp, sem_mlp, color_mlp, config)
 
         # conduct local bundle adjustment (with lower frequency)
-        if config.track_on and config.ba_freq_frame > 0 and (used_frame_id+1) % config.ba_freq_frame == 0:
+        if config.track_on["track_on"] and config.ba_freq_frame > 0 and (used_frame_id+1) % config.ba_freq_frame == 0:
             mapper.bundle_adjustment(config.ba_iters, config.ba_frame)
         
         # mapping with fixed poses (every frame)
@@ -275,7 +278,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
         if not config.silence:
             print("time for frame reading          (ms):", (T1-T0)*1e3)
             print("time for frame preprocessing    (ms):", (T2-T1)*1e3)
-            if config.track_on:
+            if config.track_on["track_on"]:
                 print("time for odometry               (ms):", (T3-T2)*1e3)
             if config.pgo_on:
                 print("time for loop detection and PGO (ms):", (T4-T3)*1e3)
@@ -289,7 +292,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
 
             dataset.static_mask = mapper.static_mask
             dataset.update_o3d_map()
-            if config.track_on and used_frame_id > 0 and (not o3d_vis.vis_pc_color) and (weight_pc_o3d is not None): 
+            if config.track_on["track_on"] and used_frame_id > 0 and (not o3d_vis.vis_pc_color) and (weight_pc_o3d is not None): 
                 dataset.cur_frame_o3d = weight_pc_o3d
 
             T7 = get_time()
@@ -364,7 +367,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
         dataset.processed_frame += 1
     
     # VI. Save results
-    if config.track_on:
+    if config.track_on["track_on"]:
         pose_eval_results = dataset.write_results(run_path)
     if config.pgo_on and pgm.pgo_count>0:
         print("# Loop corrected: ", pgm.pgo_count)

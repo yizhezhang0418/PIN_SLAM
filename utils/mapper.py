@@ -97,7 +97,7 @@ class Mapper():
     def determine_used_pose(self):
         if self.config.pgo_on:
             self.used_poses = torch.tensor(np.array(self.dataset.pgo_poses), device=self.device, dtype=torch.float64)
-        elif self.config.track_on:
+        elif self.config.track_on["track_on"]:
             self.used_poses = torch.tensor(np.array(self.dataset.odom_poses), device=self.device, dtype=torch.float64)
         elif self.dataset.gt_pose_provided: # for pure reconstruction with known pose
             self.used_poses = torch.tensor(np.array(self.dataset.gt_poses), device=self.device, dtype=torch.float64)
@@ -657,7 +657,7 @@ class Mapper():
             self.dataset.pgo_poses = [updated_poses_np[i] for i in range(pose_count)] 
             # odom pose would not be changed in this case (odom pose is without ba)
             # update pgo odom edge
-        elif self.config.track_on:
+        elif self.config.track_on["track_on"]:
             self.dataset.odom_poses = [updated_poses_np[i] for i in range(pose_count)] 
 
         # FIXME
