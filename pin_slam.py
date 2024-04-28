@@ -78,14 +78,14 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
 
     # pose graph manager (for back-end optimization) initialization
     pgm = PoseGraphManager(config)
-    if config.pgo_on:      
+    if config.pgo_on:      # 回环，暂时是关了的
         if dataset.gt_pose_provided: 
             pgm.add_pose_prior(0, dataset.poses_ref[config.begin_frame], fixed=True)
         else:
             pgm.add_pose_prior(0, np.eye(4), fixed=True)
 
     # loop closure detector
-    if config.use_gt_loop:
+    if config.use_gt_loop: # false
         lcd_gt = GTLoopManager(config) 
     lcd_npmc = NeuralPointMapContextManager(config, mapper) # npmc: neural point map context
 
@@ -395,7 +395,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
             o3d_vis.update(dataset.cur_frame_o3d, dataset.cur_pose_ref, cur_sdf_slice, cur_mesh, neural_pcd, pool_pcd)
             o3d_vis.update_traj(dataset.cur_pose_ref, dataset.odom_poses, dataset.gt_poses, dataset.pgo_poses, loop_edges)
     
-    return pose_eval_results
+    # return pose_eval_results
 
 if __name__ == "__main__":
 

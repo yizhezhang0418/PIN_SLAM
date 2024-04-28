@@ -80,8 +80,8 @@ class SyncedMessagesNode:
         self.timeout = rospy.Duration(5)  # 设置5秒的超时
         rospy.loginfo("initialized scan2block")
 
-        # thread = threading.Thread(target=lambda: rospy.spin())
-        # thread.start()
+        thread = threading.Thread(target=lambda: rospy.spin())
+        thread.start()
 
     def sub_msg_inloop(self):
         cloud_sub = message_filters.Subscriber('/cloud_registered_body', PointCloud2)
@@ -115,7 +115,7 @@ class SyncedMessagesNode:
         self.last_msg_time=rospy.Time.now()
 
         self.packed_messages.append((cloud_msg, odom_msg, last_pose)) # 在每一次使用前都记得清除，避免过大
-        # print("checkpoint sync_callback")
+        print("checkpoint sync_callback")
         # 检查是否收集到足够的消息（例如10帧）
         if len(self.packed_messages) >= 10:
             self.blocks_laser,self.blockposemsg=self.scan2block() # 这个blocks就是可以用的点云block
@@ -146,7 +146,7 @@ class SyncedMessagesNode:
 
 
 
-        # rospy.loginfo("Received a set of synchronized messages.")
+        rospy.loginfo("Received a set of synchronized messages.")
 
     def blocklaser2rosmsg(self):
         msg = PointCloud2()
@@ -347,30 +347,18 @@ class SyncedMessagesNode:
 
 if __name__ == '__main__':
     node_for_test=SyncedMessagesNode()
-    # timer=rospy.Timer(rospy.Duration(2),SyncedMessagesNode().sync_callback)
     # rospy.spin()
 
-    # thread0 = threading.Thread(target=SyncedMessagesNode())
-    # thread0.start()
-
-    thread1 = threading.Thread(target=lambda: rospy.spin())
-    thread1.start()
+    # thread1 = threading.Thread(target=lambda: rospy.spin())
+    # thread1.start()
 
 
-    rospy.sleep(3)
-    aa=11   
-    while not rospy.is_shutdown():
-
-        rospy.sleep(3)
-        aa=11   
-
-
-
+    # rospy.sleep(3)
+    # aa=11   
     # while not rospy.is_shutdown():
-    #     timer=rospy.Timer(rospy.Duration(2),node_for_test.sync_callback)
-    #     node_for_test
 
-
+    #     rospy.sleep(3)
+    #     aa=11   
 
 
 

@@ -36,6 +36,7 @@ continual:
   batch_size_new_sample: 1000
   pool_capacity: 2e7
 tracker:
+  track_on: True
   source_vox_down_m: 0.6
   iter_n: 100
   GM_grad: 0.1 
@@ -51,5 +52,5 @@ eval:
   silence_log: True # output the logs or not
   sensor_cad_path: ./cad/kitti_car.ply
   mesh_freq_frame: 50 # reconstruct the mesh every x frames
-  mesh_min_nn: 9
+  mesh_min_nn: 7
   save_map: True
