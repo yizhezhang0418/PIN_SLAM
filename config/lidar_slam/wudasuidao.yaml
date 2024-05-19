@@ -1,8 +1,8 @@
 setting:
   name: "wudasuidao"
   output_root: "./experiments"
-  pc_path: "./data/wudasuidao/ply"
-  pose_path: "./data/wudasuidao/poses.csv"
+  pc_path: "./data/wudasuidao/backup/ply"
+  pose_path: "./data/wudasuidao/backup/poses.csv"
 process:
   min_range_m: 0.5
   max_range_m: 30.0

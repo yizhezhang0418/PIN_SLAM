@@ -1,15 +1,16 @@
 setting:
   name: "wudasuidao_oneframe"
   output_root: "./experiments"
-  pc_path: "./data/wudasuidao/one_frame/ply"
-  pose_path: "./data/wudasuidao/one_frame/one_frame.csv"
+  # pc_path: "./data/wudasuidao/one_frame/ply"
+  pc_path: "/home/server/data/data/0_WHU-Helmet_Dataset/1114/suidao/pointcloud2/ply"
+  # pose_path: "./data/wudasuidao/one_frame/poses.csv"
 process:
   min_range_m: 0.5
   max_range_m: 30.0
   min_z_m: -30.0
   vox_down_m: 0.05
 sampler:
-  surface_sample_range_m: 0.15
+  surface_sample_range_m: 0.25
   surface_sample_n: 3
   free_sample_begin_ratio: 0.3
   free_sample_end_dist_m: 0.6

@@ -1,8 +1,8 @@
 setting:
   name: "rongyandong"
   output_root: "./experiments"
-  pc_path: "./data/rongyandong/ply_file/ply"
-  pose_path: "./data/rongyandong/ply_file/poses.csv"
+  pc_path: "./data/rongyandong/single_frame/ply"
+  pose_path: "./data/rongyandong/single_frame/poses.csv"
 process:
   min_range_m: 0.5
   max_range_m: 30.0
@@ -30,7 +30,7 @@ continual:
   batch_size_cur_frame: 2000
   pool_capacity: 2e7
 tracker:
-  track_on: False
+  track_on: True
   source_vox_down_m: 0.2
   iter_n: 100
 optimizer:
@@ -44,3 +44,4 @@ eval:
   mesh_freq_frame: 20 # reconstruct the mesh every x frames
   mesh_min_nn: 7
   save_map: True
+  save_mesh: True
