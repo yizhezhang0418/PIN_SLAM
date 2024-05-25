@@ -105,6 +105,7 @@ class Mapper():
     
     def process_frame(self, point_cloud_torch: torch.tensor,
                       frame_label_torch: torch.tensor, cur_pose_torch: torch.tensor, 
+                      frame_normal_torch: torch.tensor,
                       frame_id: int, filter_dynamic: bool = False):
         
         # points_torch contains both the coordinate and the color (intensity)
@@ -139,7 +140,7 @@ class Mapper():
             if filter_dynamic:
                 frame_label_torch = frame_label_torch[self.static_mask]
 
-        frame_normal_torch = None # not used yet
+        # frame_normal_torch = None # not used yet
 
         T1 = get_time()
 

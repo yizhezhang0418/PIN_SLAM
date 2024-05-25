@@ -20,7 +20,8 @@ class DataSampler():
     def sample(self, points_torch, 
                normal_torch,
                sem_label_torch,
-               color_torch):
+               color_torch,
+               normal_guided_sampling = False):
         # points_torch is in the sensor's local coordinate system, not yet transformed to the global system
 
         # T0 = get_time()
@@ -62,6 +63,14 @@ class DataSampler():
         if color_torch is not None:
             color_channel = color_torch.shape[1]
             surface_color_tensor = color_torch.repeat(surface_sample_n,1)
+
+        if normal_guided_sampling:
+            normal_direction = normal_torch.repeat(surface_sample_n,1) # normals are oriented towards sensors.
+            #note that normals are oriented towards origin (inwards)
+            surface_sample_points = sensor_origin_torch + surface_repeated_points + surface_sample_displacement * (-normal_direction)
+        else:
+            surface_sample_points = sensor_origin_torch+ surface_repeated_points*surface_sample_dist_ratio
+
 
         # Part 2. free space (in front of surface) uniform sampling
         # if you want to reconstruct the thin objects (like poles, tree branches) well, you need more freespace samples to have 

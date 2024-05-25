@@ -246,7 +246,8 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
         # if the robot stop, also don't process this frame, since there's no new oberservations
         if not mapper.lose_track and not dataset.stop_status:
             mapper.process_frame(dataset.cur_point_cloud_torch, dataset.cur_sem_labels_torch,
-                                 dataset.cur_pose_torch, used_frame_id, (config.dynamic_filter_on and used_frame_id > 0))
+                                 dataset.cur_pose_torch, dataset.cur_frame_normal_torch,
+                                 used_frame_id, (config.dynamic_filter_on and used_frame_id > 0))
         else: # lose track, still need to set back the local map
             mapper.determine_used_pose()
             neural_points.reset_local_map(dataset.cur_pose_torch[:3,3], None, used_frame_id)

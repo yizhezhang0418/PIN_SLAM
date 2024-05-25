@@ -227,22 +227,22 @@ class SLAMDataset(Dataset):
         if not self.silence:
             print(frame_filename)
         if not self.config.semantic_on: 
+            #pcd_t is numpy, point_ts is timestamps
             pcd_t, point_ts = read_point_cloud(frame_filename, self.config.color_channel) #  [N, 3], [N, 4] or [N, 6], may contain color or intensity
             
-            point_cloud = o3d.t.geometry.PointCloud()
-            point_cloud.point.positions = o3d.core.Tensor(pcd_t, o3d.core.float32)
-            
             if self.config.color_channel > 0:
-                point_cloud[:,-self.config.color_channel:]/=self.color_scale
+                pcd_t[:,-self.config.color_channel:]/=self.color_scale
             self.cur_sem_labels_torch = None
         else:
             label_filename = os.path.join(self.config.label_path, self.pc_filenames[frame_id].replace('bin','label'))
-            point_cloud, sem_labels, sem_labels_reduced = read_semantic_point_label(frame_filename, label_filename) # [N, 4] , [N], [N]
+            pcd_t, sem_labels, sem_labels_reduced = read_semantic_point_label(frame_filename, label_filename) # [N, 4] , [N], [N]
             self.cur_sem_labels_torch = torch.tensor(sem_labels_reduced, device=self.device, dtype=torch.long) # reduced labels (20 classes)
             self.cur_sem_labels_full = torch.tensor(sem_labels, device=self.device, dtype=torch.long) # full labels (>20 classes)
         
         # Edit by yizhezhang,Date:2024.5.25
         # surface normal estimation
+        point_cloud = o3d.t.geometry.PointCloud()
+        point_cloud.point.positions = o3d.core.Tensor(pcd_t, o3d.core.float32)
         normal_radius_m = self.config.normal_radius_m
         normal_max_nn = self.config.normal_max_nn
         self.point_cloud = point_cloud
@@ -253,9 +253,13 @@ class SLAMDataset(Dataset):
             #frame_pc.estimate_normals(radius=normal_radius_m)
             self.point_cloud.orient_normals_towards_camera_location() # orient normals towards the default origin(0,0,0).
         
+        self.cur_point_cloud_torch = torch.tensor(self.point_cloud.point.positions.numpy(), device=self.device, dtype=self.dtype)
+        self.cur_frame_normal_torch = None
+        if self.config.estimate_normal:
+            # 法向量转为torch
+            self.cur_frame_normal_torch = torch.tensor(self.point_cloud.point.normals.numpy(), dtype=self.dtype, device=self.pool_device)
         
-        self.cur_point_cloud_torch = torch.tensor(point_cloud, device=self.device, dtype=self.dtype)
-
+        # 去畸变
         if self.config.deskew:
             self.get_point_ts(point_ts)
         
@@ -742,7 +746,7 @@ def read_point_cloud(filename: str, color_channel: int = 0, bin_channel_count: i
 
     # print("Loaded ", np.shape(points)[0], " points")
 
-    return points, ts # as np
+    return points, ts # as np ， 后面可能需要转为o3d的PointCloud2类型
 
 # now we only support semantic kitti format dataset
 def read_semantic_point_label(bin_filename: str, label_filename: str, color_on: bool = False):
