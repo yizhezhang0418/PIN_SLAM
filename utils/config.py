@@ -279,7 +279,12 @@ class Config:
         self.publish_np_map: bool = True # only for Rviz visualization, publish neural point map
         self.publish_np_map_down_rate_list = [11, 23, 37, 53, 71, 89, 97, 113, 131, 151] # prime number list, downsampling for boosting neural point map pubishing speed 
         self.republish_raw_input: bool = False # publish the raw input point cloud or not
-        self.timeout_duration_s: int = 30 # in seconds, exit after receiving no topic for x seconds 
+        self.timeout_duration_s: int = 30 # in seconds, exit after receiving no topic for x seconds
+        
+        # N3-Mapping related:about using normal to guide sample
+        self.estimate_normal: bool = True  # estimate surface normal or not
+        self.normal_radius_m: float = 0.5  # supporting radius for estimating the normal
+        self.normal_max_nn: int = 20 # supporting neighbor count for estimating the normal
 
 
     def load(self, config_file):
@@ -339,6 +344,9 @@ class Config:
                 self.vox_down_m = config_args["process"].get("vox_down_m", self.max_range*1e-3)
             self.dynamic_filter_on = config_args["process"].get("dynamic_filter_on", self.dynamic_filter_on)
             self.adaptive_range_on = config_args["process"].get("adaptive_range_on", self.adaptive_range_on)
+            self.estimate_normal = config_args["process"].get("estimate_normal", self.estimate_normal)
+            self.normal_radius_m = config_args["process"].get("normal_radius_m", self.normal_radius_m)
+            self.normal_max_nn = config_args["process"].get("normal_max_nn", self.normal_max_nn)
 
         # sampler
         if "sampler" in config_args:

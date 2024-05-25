@@ -150,6 +150,7 @@ class SLAMDataset(Dataset):
         self.cur_source_colors = None
 
 
+
     def read_frame_ros(self, msg, ts_field_name = "time", ts_col=3):
 
         # ros related
@@ -218,6 +219,19 @@ class SLAMDataset(Dataset):
             point_cloud, sem_labels, sem_labels_reduced = read_semantic_point_label(frame_filename, label_filename) # [N, 4] , [N], [N]
             self.cur_sem_labels_torch = torch.tensor(sem_labels_reduced, device=self.device, dtype=torch.long) # reduced labels (20 classes)
             self.cur_sem_labels_full = torch.tensor(sem_labels, device=self.device, dtype=torch.long) # full labels (>20 classes)
+        
+        # Edit by yizhezhang,Date:2024.5.25
+        # surface normal estimation
+        normal_radius_m = self.config.normal_radius_m
+        normal_max_nn = self.config.normal_max_nn
+        self.point_cloud = point_cloud
+        
+        if self.config.estimate_normal:
+            self.point_cloud.estimate_normals(max_nn = normal_max_nn)
+            #frame_pc.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(normal_max_nn))
+            #frame_pc.estimate_normals(radius=normal_radius_m)
+            self.point_cloud.orient_normals_towards_camera_location() # orient normals towards the default origin(0,0,0).
+        
         
         self.cur_point_cloud_torch = torch.tensor(point_cloud, device=self.device, dtype=self.dtype)
 
@@ -366,6 +380,7 @@ class SLAMDataset(Dataset):
             # print("# Source point for registeration : ", cur_source_torch.shape[0])
     
         # T4 = get_time()
+        
         return True
     
     def update_odom_pose(self, cur_pose_torch: torch.tensor):

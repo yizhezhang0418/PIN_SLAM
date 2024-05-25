@@ -25,28 +25,36 @@ class DataSampler():
 
         # T0 = get_time()
 
-        dev = self.dev
-        surface_sample_range = self.config.surface_sample_range_m 
-        surface_sample_n = self.config.surface_sample_n
-        freespace_behind_sample_n = self.config.free_behind_n
-        freespace_front_sample_n = self.config.free_front_n
+        dev = self.dev # DEVICE 0，GPU的编号，不用管
+        surface_sample_range = self.config.surface_sample_range_m # noise level (actually as the std for a gaussian distribution) 
+        surface_sample_n = self.config.surface_sample_n # =3
+        freespace_behind_sample_n = self.config.free_behind_n # =1
+        freespace_front_sample_n = self.config.free_front_n # =2
         all_sample_n = surface_sample_n+freespace_behind_sample_n+freespace_front_sample_n+1 # 1 as the exact measurement
         free_front_min_ratio = self.config.free_sample_begin_ratio
-        free_sample_end_dist = self.config.free_sample_end_dist_m        
+        free_sample_end_dist = self.config.free_sample_end_dist_m
         sigma_base = self.config.sigma_sigmoid_m
-
-        # get sample points
-        point_num = points_torch.shape[0]
-        distances = torch.linalg.norm(points_torch, dim=1, keepdim=True) # ray distances (scaled)
         
-        # Part 0. the exact measured point
-        measured_sample_displacement = torch.zeros_like(distances)
-        measured_sample_dist_ratio = torch.ones_like(distances)
+
+        # get sample points points_torch(N,M),N为点的个数，M为点的其他属性(x,y,z)这类的
+        point_num = points_torch.shape[0] # torch.shape[0]是原始神经点的个数
+        distances = torch.linalg.norm(points_torch, dim=1, keepdim=True) # ray distances (scaled) 计算与原点的距离
+        
+        """
+            code for sample points
+        """
+        
+        # Part 0. the exact measured point # 这两个存的是采样点的东西
+        measured_sample_displacement = torch.zeros_like(distances) # 这个是采样点的偏移，但是因为是实测点，所以为0
+        measured_sample_dist_ratio = torch.ones_like(distances) # 这个是采样点与实测距离距离比值，因为是实测点，所以为1
 
         # Part 1. close-to-surface uniform sampling 
         # uniform sample in the close-to-surface range (+- range)
+        # randn是标准正态分布取样
+        # 按照高斯取样，取样个数point_num*surface_sample_n
         surface_sample_displacement = torch.randn(point_num*surface_sample_n, 1, device=dev)*surface_sample_range 
         
+        # surface_sample_n是对应维度的复制个数，就是第一维上复制surface_sample_n次
         repeated_dist = distances.repeat(surface_sample_n,1)
         surface_sample_dist_ratio = surface_sample_displacement/repeated_dist + 1.0 # 1.0 means on the surface
         if sem_label_torch is not None:
@@ -86,7 +94,12 @@ class DataSampler():
         
         # T1 = get_time()
 
+        """
+            在这里之后的代码就是采样完点的代码，可以不用改
+        """
+        
         # all together
+        # measured_sample_displacement代表实测点
         all_sample_displacement = torch.cat((measured_sample_displacement, surface_sample_displacement, free_sample_front_displacement, free_sample_behind_displacement),0)
         all_sample_dist_ratio = torch.cat((measured_sample_dist_ratio, surface_sample_dist_ratio, free_sample_front_dist_ratio, free_sample_behind_dist_ratio),0)
         
