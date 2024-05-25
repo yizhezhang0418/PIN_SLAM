@@ -192,6 +192,23 @@ class SLAMDataset(Dataset):
         if self.config.deskew:
             self.get_point_ts(point_ts)
             
+    # modified on 2024.5.25 borrowed from N3-Mapping
+    def read_point_cloud(self, filename: str):
+        # read point cloud from either (*.ply, *.pcd) or (kitti *.bin) format
+        if ".bin" in filename:
+            points = np.fromfile(filename, dtype=np.float32).reshape((-1, 4))[:, :3]
+        elif ".ply" in filename or ".pcd" in filename:
+            pc_load = o3d.io.read_point_cloud(filename)
+            points = np.asarray(pc_load.points)
+        else:
+            sys.exit(
+                "The format of the imported point cloud is wrong (support only *pcd, *ply and *bin)"
+            )
+        preprocessed_points = self.preprocess_kitti(points, self.config.min_z, self.config.min_range)
+        #preprocessed_points = points
+        pcd_t = o3d.t.geometry.PointCloud()
+        pcd_t.point.positions = o3d.core.Tensor(preprocessed_points, o3d.core.float32)
+        return pcd_t
 
     def read_frame(self, frame_id):
         
@@ -210,7 +227,11 @@ class SLAMDataset(Dataset):
         if not self.silence:
             print(frame_filename)
         if not self.config.semantic_on: 
-            point_cloud, point_ts = read_point_cloud(frame_filename, self.config.color_channel) #  [N, 3], [N, 4] or [N, 6], may contain color or intensity 
+            pcd_t, point_ts = read_point_cloud(frame_filename, self.config.color_channel) #  [N, 3], [N, 4] or [N, 6], may contain color or intensity
+            
+            point_cloud = o3d.t.geometry.PointCloud()
+            point_cloud.point.positions = o3d.core.Tensor(pcd_t, o3d.core.float32)
+            
             if self.config.color_channel > 0:
                 point_cloud[:,-self.config.color_channel:]/=self.color_scale
             self.cur_sem_labels_torch = None
