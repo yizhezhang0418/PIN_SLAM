@@ -285,7 +285,7 @@ class Config:
         self.estimate_normal: bool = True  # estimate surface normal or not
         self.normal_radius_m: float = 0.5  # supporting radius for estimating the normal
         self.normal_max_nn: int = 20 # supporting neighbor count for estimating the normal
-
+        self.gaussian_sampling_on: bool = False
 
     def load(self, config_file):
         config_args = yaml.safe_load(open(os.path.abspath(config_file)))
@@ -356,6 +356,7 @@ class Config:
             self.surface_sample_n = config_args["sampler"].get("surface_sample_n", self.surface_sample_n)
             self.free_front_n = config_args["sampler"].get("free_front_sample_n", self.free_front_n)
             self.free_behind_n = config_args["sampler"].get("free_behind_sample_n", self.free_behind_n)
+            # self.gaussian_sampling_on = config_args["sampler"]["gaussian_sampling_on"]
 
         # neural point map
         if "neuralpoints" in config_args:
