@@ -22,6 +22,7 @@ from utils.loss import *
 from model.neural_points import NeuralPoints
 from model.decoder import Decoder
 
+import pcl
 
 class Mapper():
 
@@ -143,6 +144,10 @@ class Mapper():
         # frame_normal_torch = None # not used yet
 
         T1 = get_time()
+
+        ## 做一次MLS?在read_frame里面做会不会好一点。
+
+
 
         # sampling data for training
         (coord, sdf_label, normal_label, sem_label, color_label, weight) = \
@@ -438,6 +443,7 @@ class Mapper():
 
             T00 = get_time()
             # we do not use the ray rendering loss here for the incremental mapping
+            # coord sdf_label 等都是实际测量值
             coord, sdf_label, ts, _, sem_label, color_label, weight = self.get_batch(global_coord=not self.ba_done_flag) # coord here is in global frame if no ba pose update
 
             T01 = get_time()
@@ -472,7 +478,7 @@ class Mapper():
             surface_mask = (torch.abs(sdf_label) < self.config.surface_sample_range_m)  # weight > 0
 
             if self.require_gradient:
-                g = get_gradient(coord, sdf_pred) # to unit m  
+                g = get_gradient(coord, sdf_pred) # to unit m  sdf_pred对coord求导数
             elif self.config.numerical_grad: # do not use this for the tracking, still analytical grad for tracking   
                 g = self.get_numerical_gradient(coord[::self.config.gradient_decimation], 
                                                 sdf_pred[::self.config.gradient_decimation],

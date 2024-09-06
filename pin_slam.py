@@ -136,8 +136,8 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
             else: # incremental mapping with gt pose
                 if dataset.gt_pose_provided:
                     dataset.update_odom_pose(dataset.cur_pose_guess_torch)
-                    aa = dataset.cur_pose_guess_torch
-                    print(f"这是第{frame_id}帧!")
+                    # aa = dataset.cur_pose_guess_torch
+                    # print(f"这是第{frame_id}帧!")
                 else:
                     sys.exit("You are using the mapping mode, but no pose is provided.")
 

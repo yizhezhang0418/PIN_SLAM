@@ -7,6 +7,8 @@ import numpy as np
 
 from module import ply
 
+# import open3d as o3d
+
 def rosbag2ply(args):
 
     os.makedirs(args.output_folder, 0o755, exist_ok=True)
@@ -26,7 +28,7 @@ def rosbag2ply(args):
 
             # NOTE: point cloud array: x,y,z,intensity,timestamp,ring,others...
             # could be different for some other rosbags
-            #print(array[:, :6])
+            # print(array[:, :6])
             
             # timestamps = array[:, 4] # for hilti and others
             # timestamps = array[:, 5] # for m2dgr
@@ -39,13 +41,26 @@ def rosbag2ply(args):
             # timestamps_shifted = timestamps - shift_timestamp
             # print(timestamps_shifted)
 
-            field_names = ['x','y','z']
+            ## 原来的
+            field_names = ['x','y','z','normal_x','normal_y','normal_z']
             ply_file_path = os.path.join(args.output_folder, str(t)+".ply")
 
-            if ply.write_ply(ply_file_path, [array[:,:3]], field_names):
+            if ply.write_ply(ply_file_path, [array[:,:6]], field_names):
                 print("Export : "+ply_file_path)
             else:
                 print('ply.write_ply() failed')
+
+
+            # points = array[:, :3]  # 提取 x, y, z
+            # normals = array[:, 3:6]  # 提取 normal_x, normal_y, normal_z
+
+            # point_cloud = o3d.geometry.PointCloud()
+            # point_cloud.points = o3d.utility.Vector3dVector(points)
+            # point_cloud.normals = o3d.utility.Vector3dVector(normals)
+
+            # ply_file_path = os.path.join(args.output_folder, str(t)+".ply")
+            # o3d.io.write_point_cloud(ply_file_path, point_cloud, write_ascii=True)
+
 
 
 if __name__ == "__main__":

@@ -44,3 +44,4 @@ eval:
   mesh_freq_frame: 20 # reconstruct the mesh every x frames
   mesh_min_nn: 7
   save_map: True
+  save_mesh: True

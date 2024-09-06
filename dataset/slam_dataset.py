@@ -24,6 +24,8 @@ from utils.tools import get_time, voxel_down_sample_torch, deskewing, transform_
 from utils.semantic_kitti_utils import *
 from eval.eval_traj_utils import *
 
+import pcl
+
 # TODO: write a new dataloader for RGB-D inputs, not always converting them to KITTI Lidar format
 
 class SLAMDataset(Dataset):
@@ -200,6 +202,7 @@ class SLAMDataset(Dataset):
         elif ".ply" in filename or ".pcd" in filename:
             pc_load = o3d.io.read_point_cloud(filename)
             points = np.asarray(pc_load.points)
+            normals = np.asarray(pc_load.normals)
         else:
             sys.exit(
                 "The format of the imported point cloud is wrong (support only *pcd, *ply and *bin)"
@@ -208,6 +211,7 @@ class SLAMDataset(Dataset):
         #preprocessed_points = points
         pcd_t = o3d.t.geometry.PointCloud()
         pcd_t.point.positions = o3d.core.Tensor(preprocessed_points, o3d.core.float32)
+        pcd_t.point.normals = o3d.core.Tensor(normals, o3d.core.float32)
         return pcd_t
 
     def read_frame(self, frame_id):
@@ -227,7 +231,7 @@ class SLAMDataset(Dataset):
         if not self.silence:
             print(frame_filename)
         if not self.config.semantic_on: 
-            #pcd_t is numpy, point_ts is timestamps
+            #pcd_t is numpy, point_ts is timestamps 用的最下面的函数read_point_cloud
             pcd_t, point_ts = read_point_cloud(frame_filename, self.config.color_channel) #  [N, 3], [N, 4] or [N, 6], may contain color or intensity
             
             if self.config.color_channel > 0:
@@ -241,23 +245,42 @@ class SLAMDataset(Dataset):
         
         # Edit by yizhezhang,Date:2024.5.25
         # surface normal estimation
+        
+        # DO：把MLS先进行一次点云滤波
+        # cloud = pcl.PointCloud()
+        # cloud.from_array(pcd_t.astype(np.float32))
+        # tree = cloud.make_kdtree()
+        # mls = cloud.make_moving_least_squares()
+        # # print('make_moving_least_squares')
+        # mls.set_Compute_Normals(True)
+        # mls.set_polynomial_fit(True)
+        # mls.set_Search_Method(tree)
+        # mls.set_search_radius(0.15)
+        # # print('set parameters')
+        # mls_points = mls.process()
+        # smoothed_points = mls_points.to_array()
+
+
         point_cloud = o3d.t.geometry.PointCloud()
-        point_cloud.point.positions = o3d.core.Tensor(pcd_t, o3d.core.float32)
+        point_cloud.point.positions = o3d.core.Tensor(pcd_t[:,:3], o3d.core.float32)
+        point_cloud.point.normals = o3d.core.Tensor(pcd_t[:,3:6], o3d.core.float32)
         normal_radius_m = self.config.normal_radius_m
         normal_max_nn = self.config.normal_max_nn
+        # normal_max_nn = 10
         self.point_cloud = point_cloud
         
-        if self.config.estimate_normal:
-            self.point_cloud.estimate_normals(max_nn = normal_max_nn)
+        # if self.config.estimate_normal:
+        #     self.point_cloud.estimate_normals(max_nn = normal_max_nn)
             #frame_pc.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(normal_max_nn))
             #frame_pc.estimate_normals(radius=normal_radius_m)
-            self.point_cloud.orient_normals_towards_camera_location() # orient normals towards the default origin(0,0,0).
+            # self.point_cloud.estimate_normals(radius = 0.3)
+        # self.point_cloud.orient_normals_towards_camera_location() # orient normals towards the default origin(0,0,0).
         
         self.cur_point_cloud_torch = torch.tensor(self.point_cloud.point.positions.numpy(), device=self.device, dtype=self.dtype)
         self.cur_frame_normal_torch = None
         if self.config.estimate_normal:
             # 法向量转为torch
-            self.cur_frame_normal_torch = torch.tensor(self.point_cloud.point.normals.numpy(), dtype=self.dtype, device=self.pool_device)
+            self.cur_frame_normal_torch = torch.tensor(self.point_cloud.point.normals.numpy(), dtype=self.dtype, device=self.device)
         
         # 去畸变
         if self.config.deskew:
@@ -357,6 +380,7 @@ class SLAMDataset(Dataset):
         else:
             idx = voxel_down_sample_torch(self.cur_point_cloud_torch[:,:3], train_voxel_m)
         self.cur_point_cloud_torch = self.cur_point_cloud_torch[idx]
+        self.cur_frame_normal_torch = self.cur_frame_normal_torch[idx]
         if self.cur_point_ts_torch is not None:
             self.cur_point_ts_torch = self.cur_point_ts_torch[idx]
         if self.cur_sem_labels_torch is not None:
@@ -370,9 +394,10 @@ class SLAMDataset(Dataset):
             self.cur_point_cloud_torch, self.cur_sem_labels_torch = filter_sem_kitti(self.cur_point_cloud_torch, self.cur_sem_labels_torch, self.cur_sem_labels_full,
                                                                                      True, self.config.filter_moving_object) 
         else:
-            self.cur_point_cloud_torch, self.cur_point_ts_torch = crop_frame(self.cur_point_cloud_torch, self.cur_point_ts_torch, 
+            self.cur_point_cloud_torch, self.cur_point_ts_torch, filtered_idx = crop_frame(self.cur_point_cloud_torch, self.cur_point_ts_torch, 
                                                                              self.config.min_z, self.config.max_z, 
                                                                              self.config.min_range, crop_max_range)
+            self.cur_frame_normal_torch = self.cur_frame_normal_torch[filtered_idx]
 
         if self.config.kitti_correction_on:
             self.cur_point_cloud_torch = intrinsic_correct(self.cur_point_cloud_torch, self.config.correction_deg)
@@ -709,6 +734,12 @@ def read_point_cloud(filename: str, color_channel: int = 0, bin_channel_count: i
         # print("available attributes:", keys)
 
         points = pc_load['positions']
+        if 'normal_x' in keys:
+            normal_x = pc_load['normal_x']
+            normal_y = pc_load['normal_y']
+            normal_z = pc_load['normal_z']
+            points = np.hstack((points, normal_x, normal_y, normal_z))
+
 
         if 't' in keys:
             ts = pc_load['t'] * 1e-8
@@ -887,7 +918,7 @@ def crop_frame(points: torch.tensor, ts: torch.tensor,
     points = points[filtered_idx]
     if ts is not None:
         ts = ts[filtered_idx]
-    return points, ts
+    return points, ts, filtered_idx
 
 # torch version
 def intrinsic_correct(points: torch.tensor, correct_deg=0.):
