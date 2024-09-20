@@ -259,7 +259,7 @@ def run_pin_slam(config_path=None, dataset_name=None, sequence_name=None, seed=N
         cur_iter_num = config.iters * config.init_iter_ratio if used_frame_id == 0 else config.iters
         if config.adaptive_iters and dataset.stop_status:
             cur_iter_num = max(1, cur_iter_num-10)
-        if used_frame_id == config.freeze_after_frame: # freeze the decoder after certain frame 
+        if used_frame_id == config.freeze_after_frame: # freeze the decoder after certain frame (40 frames)
             freeze_decoders(geo_mlp, sem_mlp, color_mlp, config)
 
         # conduct local bundle adjustment (with lower frequency)

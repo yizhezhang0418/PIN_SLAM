@@ -171,6 +171,7 @@ class Config:
 
         self.weight_s: float = 1.0  # weight for semantic classification loss
         self.weight_i: float = 1.0  # weight for color or intensity regression loss
+        self.weight_n: float = 0.1  # weight for calculate normals and surface normals
 
         # optimizer
         self.mapping_freq_frame: int = 1

@@ -444,7 +444,7 @@ class Mapper():
             T00 = get_time()
             # we do not use the ray rendering loss here for the incremental mapping
             # coord sdf_label 等都是实际测量值
-            coord, sdf_label, ts, _, sem_label, color_label, weight = self.get_batch(global_coord=not self.ba_done_flag) # coord here is in global frame if no ba pose update
+            coord, sdf_label, ts, normal_label, sem_label, color_label, weight = self.get_batch(global_coord=not self.ba_done_flag) # coord here is in global frame if no ba pose update
 
             T01 = get_time()
 
@@ -477,8 +477,12 @@ class Mapper():
 
             surface_mask = (torch.abs(sdf_label) < self.config.surface_sample_range_m)  # weight > 0
 
+            ## add neurodin_field.py
+            NeuRodin_random_gra = False
+            # self.require_gradient = False
+
             if self.require_gradient:
-                g = get_gradient(coord, sdf_pred) # to unit m  sdf_pred对coord求导数
+                g = get_gradient(coord, sdf_pred) # to unit m  sdf_pred对coord求导数 [8192,3]
             elif self.config.numerical_grad: # do not use this for the tracking, still analytical grad for tracking   
                 g = self.get_numerical_gradient(coord[::self.config.gradient_decimation], 
                                                 sdf_pred[::self.config.gradient_decimation],
@@ -488,7 +492,45 @@ class Mapper():
                 #                                 certainty[::self.config.gradient_decimation],
                 #                                 self.config.voxel_size_m*self.config.num_grad_step_ratio*2)  
                 # different eps for different sample points (smaller for those more stable ones)
-     
+            elif NeuRodin_random_gra:
+                N = coord.shape[0]  
+                # add random gradient from NeuRodin.py
+                random_taps = 0.1
+                delta = torch.rand(coord.shape[0]).to(coord) * random_taps
+
+                shift_x = torch.zeros_like(coord)
+                shift_x[:, 0] = delta
+                shift_y = torch.zeros_like(coord)
+                shift_y[:, 1] = delta
+                shift_z = torch.zeros_like(coord)
+                shift_z[:, 2] = delta
+
+
+                x_pos = coord + shift_x
+                x_neg = coord - shift_x
+                y_pos = coord + shift_y
+                y_neg = coord - shift_y
+                z_pos = coord + shift_z
+                z_neg = coord - shift_z
+
+
+                x_posneg = torch.concat((x_pos, x_neg, y_pos, y_neg, z_pos, z_neg), dim=0)
+                sdf_x_posneg = self.sdf(x_posneg)[0].unsqueeze(-1)
+
+                sdf_x_pos = sdf_x_posneg[:N]  
+                sdf_x_neg = sdf_x_posneg[N:2*N] 
+                sdf_y_pos = sdf_x_posneg[2*N:3*N] 
+                sdf_y_neg = sdf_x_posneg[3*N:4*N] 
+                sdf_z_pos = sdf_x_posneg[4*N:5*N] 
+                sdf_z_neg = sdf_x_posneg[5*N:] 
+
+                gradient_x = (sdf_x_pos - sdf_x_neg) / (2 * shift_x[:, 0]).view(-1,1)
+                gradient_y = (sdf_y_pos - sdf_y_neg) / (2 * shift_y[:, 1]).view(-1,1)
+                gradient_z = (sdf_z_pos - sdf_z_neg) / (2 * shift_z[:, 2]).view(-1,1)
+                
+                
+                g = torch.cat([gradient_x, gradient_y, gradient_z], dim=1)  # [...,3]
+  
 
             T03 = get_time()
 
@@ -564,6 +606,17 @@ class Mapper():
                 color_loss = color_diff_loss(color_pred[surface_mask], color_label[surface_mask], 
                                              weight[surface_mask], self.config.loss_weight_on, l2_loss=False)
                 cur_loss += self.config.weight_i * color_loss
+            
+            # if iter > iter_count/2:
+            #     normal_loss = 0
+            #     normal_loss_on = True
+            #     if normal_loss_on:
+            #         # g和normal按照道理来说应该是一样的
+            #         diff = abs(normal_label) - abs(g)
+            #         normal_loss1 = torch.abs(diff).mean()
+            #         normal_loss2 = torch.abs(1 - torch.matmul(normal_label, g.T)).mean()
+            #         normal_loss = normal_loss1 + normal_loss2
+            #         cur_loss += self.config.weight_n * normal_loss
 
             T04 = get_time()
 

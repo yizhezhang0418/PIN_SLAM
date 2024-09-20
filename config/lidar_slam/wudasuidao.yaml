@@ -3,8 +3,8 @@ setting:
   output_root: "./experiments"
   # pc_path: "./data/wudasuidao/backup/suidao_only/ply"
   # pose_path: "./data/wudasuidao/backup/suidao_only/poses.csv"
-  pc_path: "./data/wudasuidao/normal/30frame/ply_normalcorrect_dir_100_kout_15"
-  pose_path: "./data/wudasuidao/normal/30frame/poses.csv"
+  pc_path: "./data/wudasuidao/normal/10frame/ply_normalcorrect_dir_100_kout_15_knn_25"
+  pose_path: "./data/wudasuidao/normal/10frame/poses.csv"
 process:
   min_range_m: 0.5
   max_range_m: 40.0
